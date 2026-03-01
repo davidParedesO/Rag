@@ -8,8 +8,8 @@ namespace Rag.Services;
 public class AnythingLlmService
 {
     private readonly HttpClient _httpClient;
-    private const string BaseUrl = "http://localhost:3001/api/v1";
-    private const string ApiKey = "48QGNN2-65B40XR-JG1BJ4V-M00QB07";
+    private const string BaseUrl = "#";
+    private const string ApiKey = "#";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
