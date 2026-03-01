@@ -1,0 +1,283 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:viewmodels="clr-namespace:Rag.ViewModels"
+             xmlns:converters="clr-namespace:Rag.Converters"
+             x:Class="Rag.Views.MainPage"
+             Title="Workspaces y Chat">
+
+    <ContentPage.Resources>
+        <converters:BoolToColorConverter x:Key="BoolToColorConverter"/>
+    </ContentPage.Resources>
+
+    <Grid ColumnDefinitions="350, *">
+        
+        <!-- PANEL IZQUIERDO: WORKSPACES -->
+        <Grid Grid.Column="0" RowDefinitions="Auto, *, Auto" BackgroundColor="#1E293B" Padding="15">
+            <!-- Header -->
+            <Label Grid.Row="0" Text="Mis Workspaces" FontSize="22" FontAttributes="Bold" TextColor="White" Margin="0,0,0,15"/>
+            
+            <!-- Lista -->
+            <RefreshView Grid.Row="1" IsRefreshing="{Binding IsBusyLoadingWorkspaces}" Command="{Binding LoadWorkspacesCommand}">
+                <CollectionView ItemsSource="{Binding Workspaces}" 
+                                SelectionMode="Single"
+                                SelectedItem="{Binding SelectedWorkspace}">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <Border Margin="0,5" Padding="10" BackgroundColor="#0F172A" Stroke="#334155" StrokeShape="RoundRectangle 8">
+                                <Grid ColumnDefinitions="*, Auto, Auto">
+                                    <!-- Nombre -->
+                                    <Label Grid.Column="0" Text="{Binding Name}" FontSize="16" TextColor="White" VerticalOptions="Center"/>
+                                    <!-- Botones Edicion -->
+                                    <Button Grid.Column="1" Text="E" FontSize="12" Padding="0" WidthRequest="30" HeightRequest="30" BackgroundColor="#F59E0B" TextColor="White" Margin="5,0"
+                                            Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:MainViewModel}}, Path=UpdateWorkspaceCommand}" CommandParameter="{Binding .}"/>
+                                    <Button Grid.Column="2" Text="X" FontSize="12" Padding="0" WidthRequest="30" HeightRequest="30" BackgroundColor="#EF4444" TextColor="White"
+                                            Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:MainViewModel}}, Path=DeleteWorkspaceCommand}" CommandParameter="{Binding .}"/>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </RefreshView>
+
+            <!-- Footer: Crear Workspace -->
+            <Grid Grid.Row="2" ColumnDefinitions="*, Auto" Margin="0,15,0,0">
+                <Entry Grid.Column="0" Text="{Binding NewWorkspaceName}" Placeholder="Nuevo workspace..." TextColor="White" PlaceholderColor="#94A3B8"/>
+                <Button Grid.Column="1" Text="Crear" Command="{Binding CreateWorkspaceCommand}" BackgroundColor="#3B82F6" TextColor="White" Margin="10,0,0,0"/>
+            </Grid>
+        </Grid>
+
+        <!-- PANEL DERECHO: CHAT / DOCUMENTOS -->
+        <Grid Grid.Column="1" RowDefinitions="Auto, *, Auto" Padding="20" IsVisible="{Binding HasSelectedWorkspace}">
+            
+            <!-- Header con Tabs (Chat / Documentos) -->
+            <HorizontalStackLayout Grid.Row="0" Spacing="10" Margin="0,0,0,15">
+                <Label Text="Workspace:" FontSize="18" TextColor="Gray" VerticalOptions="Center"/>
+                <Label Text="{Binding SelectedWorkspace.Name}" FontSize="18" FontAttributes="Bold" VerticalOptions="Center"/>
+                
+                <BoxView WidthRequest="1" Color="Gray" Margin="10,0"/>
+
+                <!-- Tabs simulados con botones -->
+                <Button Text="Chat" Command="{Binding ShowChatViewCommand}"
+                        BackgroundColor="{Binding IsViewChatActive, Converter={x:StaticResource BoolToColorConverter}}"
+                        TextColor="White" HeightRequest="35"/>
+
+                <Button Text="Documentos" Command="{Binding ShowDocsViewCommand}"
+                        BackgroundColor="{Binding IsViewDocsActive, Converter={x:StaticResource BoolToColorConverter}}"
+                        TextColor="White" HeightRequest="35"/>
+
+                <BoxView WidthRequest="1" Color="Gray" Margin="10,0"/>
+
+                <!-- Modo Chat / Query -->
+                <Button Text="💬 Chat" Command="{Binding SetChatModeCommand}"
+                        BackgroundColor="{Binding IsChatMode, Converter={x:StaticResource BoolToColorConverter}}"
+                        TextColor="White" HeightRequest="35" FontSize="12"/>
+
+                <Button Text="🔍 Query" Command="{Binding SetQueryModeCommand}"
+                        BackgroundColor="{Binding IsQueryMode, Converter={x:StaticResource BoolToColorConverter}}"
+                        TextColor="White" HeightRequest="35" FontSize="12"/>
+
+                <BoxView WidthRequest="1" Color="Transparent" HorizontalOptions="FillAndExpand"/>
+
+                <!-- System Prompt + Subir -->
+                <Button Text="⚙ Prompt" Command="{Binding EditSystemPromptCommand}"
+                        BackgroundColor="#475569" TextColor="White" HeightRequest="35" FontSize="12"/>
+
+                <Button Text="Subir Documento" Command="{Binding UploadDocumentCommand}"
+                        BackgroundColor="#10B981" TextColor="White" Margin="8,0,0,0" HeightRequest="35"/>
+            </HorizontalStackLayout>
+            
+            <!-- VISTA: CHAT -->
+            <Grid Grid.Row="1" IsVisible="{Binding IsViewChatActive}">
+                <!-- Mensajes -->
+                <CollectionView x:Name="MessagesCollectionView" ItemsSource="{Binding Messages}">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <VerticalStackLayout Margin="8,4"
+                                                 HorizontalOptions="{Binding Alignment}">
+
+                                <!-- Burbuja principal -->
+                                <Border BackgroundColor="{Binding BackgroundColor}"
+                                        Padding="14,10"
+                                        StrokeShape="RoundRectangle 18"
+                                        StrokeThickness="0"
+                                        MaximumWidthRequest="580"
+                                        MinimumWidthRequest="80">
+                                    <!-- Mensaje de texto -->
+                                    <Label Text="{Binding Content}"
+                                           FontSize="14"
+                                           TextColor="White"
+                                           LineBreakMode="WordWrap"/>
+                                </Border>
+
+                                <!-- Fuentes (solo mensajes IA con chunks) -->
+                                <VerticalStackLayout IsVisible="{Binding HasChunks}"
+                                                     Margin="4,4,4,8"
+                                                     BackgroundColor="#0F172A"
+                                                     Padding="10"
+                                                     MaximumWidthRequest="560">
+                                    <Border StrokeShape="RoundRectangle 6" StrokeThickness="0"
+                                            BackgroundColor="#0F172A" Padding="0">
+                                        <VerticalStackLayout Spacing="2">
+                                            <Label Text="📎 Fuentes consultadas" FontSize="11"
+                                                   FontAttributes="Bold" TextColor="#94A3B8"/>
+                                            <CollectionView ItemsSource="{Binding Chunks}">
+                                                <CollectionView.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Border BackgroundColor="#1E293B" Stroke="#334155"
+                                                                StrokeShape="RoundRectangle 6"
+                                                                Padding="8,6" Margin="0,3">
+                                                            <VerticalStackLayout Spacing="2">
+                                                                <Label Text="{Binding Title}" FontSize="12"
+                                                                       FontAttributes="Bold" TextColor="#34D399"/>
+                                                                <Label Text="{Binding Text}" FontSize="10"
+                                                                       TextColor="#94A3B8" MaxLines="2"
+                                                                       LineBreakMode="TailTruncation"/>
+                                                                <Label Text="{Binding Score, StringFormat='Score: {0}'}"
+                                                                       FontSize="10" TextColor="#F59E0B"/>
+                                                            </VerticalStackLayout>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </CollectionView.ItemTemplate>
+                                            </CollectionView>
+                                        </VerticalStackLayout>
+                                    </Border>
+                                </VerticalStackLayout>
+
+                            </VerticalStackLayout>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+
+                <!-- Indicador Cargando -->
+                <ActivityIndicator IsRunning="{Binding IsTyping}" IsVisible="{Binding IsTyping}"
+                                   HorizontalOptions="Center" VerticalOptions="Center"/>
+            </Grid>
+
+            <!-- Input Box del Chat (Solo visible en Vista Chat) -->
+            <Grid Grid.Row="2" RowDefinitions="Auto, Auto" Margin="0,10,0,0"
+                  IsVisible="{Binding IsViewChatActive}">
+
+                <!-- Badge de modo activo -->
+                <Border Grid.Row="0" HorizontalOptions="Start" Padding="10,4"
+                        StrokeShape="RoundRectangle 10" StrokeThickness="0"
+                        BackgroundColor="#1E293B" Margin="0,0,0,6">
+                    <Label FontSize="12" TextColor="#94A3B8">
+                        <Label.FormattedText>
+                            <FormattedString>
+                                <Span Text="Modo activo: " TextColor="#64748B"/>
+                                <Span Text="{Binding ChatMode}" TextColor="#38BDF8"
+                                      FontAttributes="Bold"/>
+                                <Span Text=" — " TextColor="#64748B"/>
+                                <Span Text="{Binding ChatMode, StringFormat='{0}' }"
+                                      TextColor="#94A3B8"/>
+                            </FormattedString>
+                        </Label.FormattedText>
+                    </Label>
+                </Border>
+
+                <!-- Entrada de texto -->
+                <Grid Grid.Row="1" ColumnDefinitions="*, Auto">
+                    <Entry Grid.Column="0" Text="{Binding InputText}"
+                           Placeholder="Haz una pregunta a tus documentos..."
+                           ReturnCommand="{Binding SendMessageCommand}"/>
+                    <Button Grid.Column="1" Text="Enviar"
+                            Command="{Binding SendMessageCommand}"
+                            BackgroundColor="#2B3C5A" TextColor="White" Margin="10,0,0,0"/>
+                </Grid>
+            </Grid>
+
+            <!-- VISTA: DOCUMENTOS — dos paneles -->
+            <Grid Grid.Row="1" Grid.RowSpan="2" IsVisible="{Binding IsViewDocsActive}"
+                  ColumnDefinitions="*, 50, *" ColumnSpacing="0">
+
+                <!-- Panel izquierdo: Almacén global -->
+                <Grid Grid.Column="0" RowDefinitions="Auto, *">
+                    <Label Grid.Row="0" Text="Mis documentos" FontSize="14" FontAttributes="Bold"
+                           TextColor="#94A3B8" Margin="0,0,0,8"/>
+                    <CollectionView Grid.Row="1" ItemsSource="{Binding AllDocuments}">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <Border Margin="0,4" Padding="12,10" BackgroundColor="#0F172A"
+                                        Stroke="#334155" StrokeShape="RoundRectangle 8">
+                                    <Grid ColumnDefinitions="*, Auto">
+                                        <VerticalStackLayout Grid.Column="0" VerticalOptions="Center" Spacing="2">
+                                            <Label Text="{Binding DisplayName}" FontSize="14"
+                                                   FontAttributes="Bold" TextColor="White"
+                                                   LineBreakMode="TailTruncation"/>
+                                            <Label Text="{Binding Name}" FontSize="10"
+                                                   TextColor="#64748B" LineBreakMode="TailTruncation"/>
+                                        </VerticalStackLayout>
+                                        <Button Grid.Column="1" Text="→" WidthRequest="36" HeightRequest="36"
+                                                Padding="0" FontSize="16"
+                                                BackgroundColor="#10B981" TextColor="White"
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:MainViewModel}}, Path=AddToWorkspaceCommand}"
+                                                CommandParameter="{Binding .}"
+                                                ToolTipProperties.Text="Añadir al workspace"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                        <CollectionView.EmptyView>
+                            <Label Text="No hay documentos en el almacén global."
+                                   TextColor="#64748B" FontSize="14"
+                                   HorizontalTextAlignment="Center" Margin="0,20"/>
+                        </CollectionView.EmptyView>
+                    </CollectionView>
+                </Grid>
+
+                <!-- Separador central -->
+                <VerticalStackLayout Grid.Column="1" VerticalOptions="Center" HorizontalOptions="Center" Spacing="4">
+                    <Label Text="⇄" FontSize="22" TextColor="#475569" HorizontalTextAlignment="Center"/>
+                </VerticalStackLayout>
+
+                <!-- Panel derecho: Documentos del workspace (con embedding) -->
+                <Grid Grid.Column="2" RowDefinitions="Auto, *">
+                    <Label Grid.Row="0" Text="En este workspace" FontSize="14" FontAttributes="Bold"
+                           TextColor="#94A3B8" Margin="0,0,0,8"/>
+                    <CollectionView Grid.Row="1" ItemsSource="{Binding WorkspaceDocuments}">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <Border Margin="0,4" Padding="12,10" BackgroundColor="#0F172A"
+                                        Stroke="#1E40AF" StrokeShape="RoundRectangle 8">
+                                    <Grid ColumnDefinitions="Auto, *">
+                                        <Button Grid.Column="0" Text="←" WidthRequest="36" HeightRequest="36"
+                                                Padding="0" FontSize="16"
+                                                BackgroundColor="#EF4444" TextColor="White"
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:MainViewModel}}, Path=RemoveFromWorkspaceCommand}"
+                                                CommandParameter="{Binding .}"
+                                                ToolTipProperties.Text="Quitar del workspace"/>
+                                        <VerticalStackLayout Grid.Column="1" VerticalOptions="Center"
+                                                             Spacing="2" Margin="8,0,0,0">
+                                            <Label Text="{Binding DisplayName}" FontSize="14"
+                                                   FontAttributes="Bold" TextColor="White"
+                                                   LineBreakMode="TailTruncation"/>
+                                            <Label Text="{Binding Name}" FontSize="10"
+                                                   TextColor="#64748B" LineBreakMode="TailTruncation"/>
+                                        </VerticalStackLayout>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                        <CollectionView.EmptyView>
+                            <Label Text="Sin documentos en el workspace."
+                                   TextColor="#64748B" FontSize="14"
+                                   HorizontalTextAlignment="Center" Margin="0,20"/>
+                        </CollectionView.EmptyView>
+                    </CollectionView>
+                </Grid>
+
+            </Grid>
+
+        </Grid>
+
+        <!-- Mensaje cuando NO hay workspace seleccionado -->
+        <VerticalStackLayout Grid.Column="1" IsVisible="{Binding HasNoSelectedWorkspace}"
+                             VerticalOptions="Center" HorizontalOptions="Center" Spacing="10">
+            <Label Text="Selecciona o crea un Workspace en la izquierda para empezar"
+                   FontSize="20" TextColor="Gray" HorizontalTextAlignment="Center"/>
+        </VerticalStackLayout>
+
+    </Grid>
+
+</ContentPage>
